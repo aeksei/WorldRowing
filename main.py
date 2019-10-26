@@ -18,17 +18,14 @@ app.layout = html.Div([
     html.Label('Championship'),
     dcc.Dropdown(
         id='dropdown_championship',
-        options=[{'label': champ, 'value': champ} for champ in df['championship'].unique()],
+        options=[{'label': champ, 'value': champ} for champ in sorted(df['championship'].unique())],
         multi=True
     ),
 
-    html.Label('Multi-Select Dropdown'),
+    html.Label('Boat classes'),
     dcc.Dropdown(
-        options=[
-            {'label': 'New York City', 'value': 'NYC'},
-            {'label': u'Montréal', 'value': 'MTL'},
-            {'label': 'San Francisco', 'value': 'SF'}
-        ],
+        id='dropdown_boat_classes',
+        options=[{'label': boat_class, 'value': boat_class} for boat_class in df['class_boat'].unique()],
         multi=True
     ),
 
@@ -37,7 +34,7 @@ app.layout = html.Div([
         id='checklist_gender',
         options=[
             {'label': 'Men', 'value': 1},
-            {'label': u'Women', 'value': 0},
+            {'label': 'Women', 'value': 0},
         ],
         value=filter_value['gender'],
         labelStyle={'display': 'inline-block'}
