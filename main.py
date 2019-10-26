@@ -82,6 +82,9 @@ def update_range_slider(value_checklist_gender,
     if (value_dropdown_championship is None) or (value_dropdown_championship == []):
         value_dropdown_championship = df['championship'].unique()
 
+    if (value_checklist_gender is None) or (value_checklist_gender == []):
+        value_checklist_gender = df['gender'].unique()
+
     filtered = {"gender": value_checklist_gender,
                 'championship': value_dropdown_championship}
 
