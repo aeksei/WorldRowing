@@ -6,11 +6,9 @@ import pandas as pd
 
 filename = 'description.csv'
 df = pd.read_csv(filename, index_col=0)
-df_selected = df
-filter_value = {'date_competition': df_selected['year'].unique(),
+filter_value = {'date_competition': df['year'].unique(),
                 'gender': [1, 0], }
 
-marks_for_range_slider = {i: str(year) for i, year in enumerate(df_selected['year'].unique())}
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -20,7 +18,7 @@ app.layout = html.Div([
     html.Label('Championship'),
     dcc.Dropdown(
         id='dropdown_championship',
-        options=[{'label': champ, 'value': champ} for champ in df_selected['championship'].unique()],
+        options=[{'label': champ, 'value': champ} for champ in df['championship'].unique()],
         multi=True
     ),
 
@@ -48,11 +46,7 @@ app.layout = html.Div([
     html.Div([
         html.Label('Date competition'),
         dcc.RangeSlider(
-            id='range_slider_date_competition',
-            min=0,
-            max=len(marks_for_range_slider) - 1,
-            value=[0, len(marks_for_range_slider) - 1],
-            marks=marks_for_range_slider,
+            id='range_slider_date_competition'
         )], style={'width': '80%',
                    'margin-left': 'auto',
                    'margin-right': 'auto'}),
@@ -77,8 +71,9 @@ def update_output(value_range_slider_date_competition, value_checklist_gender, v
 
 
 @app.callback(
-    [dash.dependencies.Output('range_slider_date_competition', 'marks'),
+    [dash.dependencies.Output('range_slider_date_competition', 'min'),
      dash.dependencies.Output('range_slider_date_competition', 'max'),
+     dash.dependencies.Output('range_slider_date_competition', 'marks'),
      dash.dependencies.Output('range_slider_date_competition', 'value')],
     [dash.dependencies.Input('checklist_gender', 'value'),
      dash.dependencies.Input('dropdown_championship', 'value')])
@@ -95,10 +90,11 @@ def update_range_slider(value_checklist_gender,
 
     marks = {i: str(year) for i, year in enumerate(selected['year'].unique())}
 
+    min_ = 0
     max_ = len(marks) - 1
-    value = [0, max_]
+    value = [min_, max_]
 
-    return [marks, max_, value]
+    return [min_, max_, marks, value]
 
 
 if __name__ == '__main__':
