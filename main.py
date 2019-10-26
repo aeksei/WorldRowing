@@ -10,6 +10,8 @@ df_selected = df
 filter_value = {'date_competition': df_selected['year'].unique(),
                 'gender': [1, 0], }
 
+marks_for_range_slider = {i: str(year) for i, year in enumerate(df_selected['year'].unique())}
+
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -17,6 +19,7 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 app.layout = html.Div([
     html.Label('Championship'),
     dcc.Dropdown(
+        id='dropdown_championship',
         options=[{'label': champ, 'value': champ} for champ in df_selected['championship'].unique()],
         multi=True
     ),
@@ -47,9 +50,9 @@ app.layout = html.Div([
         dcc.RangeSlider(
             id='range_slider_date_competition',
             min=0,
-            max=len(df_selected['year'].unique()) - 1,
-            value=[0, len(df_selected['year'].unique()) - 1],
-            marks={i: str(year) for i, year in enumerate(df_selected['year'].unique())},
+            max=len(marks_for_range_slider) - 1,
+            value=[0, len(marks_for_range_slider) - 1],
+            marks=marks_for_range_slider,
         )], style={'width': '80%',
                    'margin-left': 'auto',
                    'margin-right': 'auto'}),
@@ -59,14 +62,43 @@ app.layout = html.Div([
 
 
 @app.callback(
-    dash.dependencies.Output('output-container-range-slider', 'children'),
-    [dash.dependencies.Input('range_slider_date_competition', 'value')])
-def update_output(value):
+    [dash.dependencies.Output('output-container-range-slider', 'children')],
+    [dash.dependencies.Input('range_slider_date_competition', 'value'),
+     dash.dependencies.Input('checklist_gender', 'value'),
+     dash.dependencies.Input('dropdown_championship', 'value')])
+def update_output(value_range_slider_date_competition, value_checklist_gender, value_dropdown_championship):
     output = ""
-    output += 'You have selected year {} - {}\n'.format(filter_value['date_competition'][value[0]],
-                                                        filter_value['date_competition'][value[1]])
+    output += 'You have selected year {} - {}\n'.format(
+        filter_value['date_competition'][value_range_slider_date_competition[0]],
+        filter_value['date_competition'][value_range_slider_date_competition[1]])
+    output += 'You have selected gender {}\n'.format(value_checklist_gender)
+    output += 'You have selected gender {}\n'.format(value_dropdown_championship)
+    return [output]
 
-    return output
+
+@app.callback(
+    [dash.dependencies.Output('range_slider_date_competition', 'marks'),
+     dash.dependencies.Output('range_slider_date_competition', 'max'),
+     dash.dependencies.Output('range_slider_date_competition', 'value')],
+    [dash.dependencies.Input('checklist_gender', 'value'),
+     dash.dependencies.Input('dropdown_championship', 'value')])
+def update_range_slider(value_checklist_gender,
+                        value_dropdown_championship):
+    if (value_dropdown_championship is None) or (value_dropdown_championship == []):
+        value_dropdown_championship = df['championship'].unique()
+
+    filtered = {"gender": value_checklist_gender,
+                'championship': value_dropdown_championship}
+
+    selected = df[filtered.keys()].isin(filtered).sum(axis=1)
+    selected = df.loc[selected[selected == selected.max()].index]
+
+    marks = {i: str(year) for i, year in enumerate(selected['year'].unique())}
+
+    max_ = len(marks) - 1
+    value = [0, max_]
+
+    return [marks, max_, value]
 
 
 if __name__ == '__main__':
