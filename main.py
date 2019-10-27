@@ -3,6 +3,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import pandas as pd
 
 
@@ -49,13 +50,6 @@ app.layout = html.Div([
         multi=True
     ),
 
-    html.Label('Boat classes'),
-    dcc.Dropdown(
-        id='dropdown_boat_classes',
-        options=[{'label': boat_class, 'value': boat_class} for boat_class in sorted(init_boat_classes)],
-        multi=True
-    ),
-
     html.Label('Gender'),
     dcc.Checklist(
         id='checklist_gender',
@@ -67,14 +61,18 @@ app.layout = html.Div([
         labelStyle={'display': 'inline-block'}
     ),
 
+    html.Label('Boat classes'),
+    dcc.Dropdown(
+        id='dropdown_boat_classes',
+        options=[{'label': boat_class, 'value': boat_class} for boat_class in sorted(init_boat_classes)],
+        multi=True
+    ),
+
     html.Div([
         dcc.Graph(
             id="bar_plot_total_time"
         ),
-        dcc.Graph(
-            id="bar_plot_split_time"
-        ),
-    ], style={'columnCount': 2}),
+    ]),
 
     html.Div([
         # html.Label('Date competition'),
@@ -152,43 +150,8 @@ def update_dropdown_boat_classes(value_checklist_gender,
     options = [{'label': boat, 'value': boat} for boat in sorted(boat_classes)]
     return options
 
-
 @app.callback(
     dash.dependencies.Output('bar_plot_total_time', 'figure'),
-    [dash.dependencies.Input('range_slider_year', 'value'),
-     dash.dependencies.Input('checklist_gender', 'value'),
-     dash.dependencies.Input('dropdown_championship', 'value'),
-     dash.dependencies.Input('dropdown_boat_classes', 'value')])
-def update_graph(value_range_slider_year,
-                 value_checklist_gender,
-                 value_dropdown_championship,
-                 value_dropdown_boat_classes):
-    # TODO uuid index in data and desc
-
-    years = filter_value['year'][value_range_slider_year[0]:value_range_slider_year[1]]
-
-    df_description_index = filter_df(df_description, {'year': years}).index
-    df = df_data.loc[df_description_index, :]
-    col = ['total_rank_common']
-    plot_total_rank_common = df.loc[df['_2000m_total_rank'] == 1, col + ["_2000m_total_rank"]].groupby(by=col).count()
-    plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:20]
-
-    bar = go.Bar(
-        x=plot_total_rank_common.index,
-        y=plot_total_rank_common['_2000m_total_rank']
-    )
-
-    return {
-        'data': [bar],
-        'layout': go.Layout(
-            xaxis={'title': 'GDP Per Capita1'},
-            yaxis={'title': 'Life Expectancy1'}
-        )
-    }
-
-
-@app.callback(
-    dash.dependencies.Output('bar_plot_split_time', 'figure'),
     [dash.dependencies.Input('range_slider_year', 'value'),
      dash.dependencies.Input('checklist_gender', 'value'),
      dash.dependencies.Input('dropdown_championship', 'value'),
@@ -202,29 +165,31 @@ def update_split_time(value_range_slider_year,
     years = filter_value['year'][value_range_slider_year[0]:value_range_slider_year[1]]
 
     df_description_index = filter_df(df_description, {'year': years}).index
-    col = ['split_rank_self']
+
     df = df_data.loc[df_description_index, :]
 
-    fig = go.Figure()
+    fig = make_subplots(
+        rows=1, cols=2, subplot_titles=('Последовательность мест по общему времени среди всех спортсменов',
+                                        'Последовательность мест по среднему времени среди своего времени'))
+
     color = ['indianred', 'lightsalmon']
-    for place in [1, 2]:
+    place = 1
+    for i, col in enumerate([['total_rank_common'], ['split_rank_self']], start=1):
         plot_total_rank_common = df.loc[df['_2000m_total_rank'] == place, col + ["_2000m_total_rank"]].groupby(
             by=col).count()
-        plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:20]
+        plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:15]
         fig.add_trace(
             go.Bar(
                 x=plot_total_rank_common.index,
                 y=plot_total_rank_common['_2000m_total_rank'],
                 name=place,
-                marker_color=color[place - 1])
+                marker_color=color[place - 1]),
+            row=1, col=i
         )
 
     return {
         'data': fig['data'],
-        'layout': go.Layout(
-            xaxis={'title': 'GDP Per Capita2'},
-            yaxis={'title': 'Life Expectancy2'}
-        )
+        'layout': fig['layout']
     }
 
     # output = []
