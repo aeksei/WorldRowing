@@ -4,6 +4,21 @@ import dash_core_components as dcc
 import dash_html_components as html
 import pandas as pd
 
+
+def filter_df(df, filter_value):
+    if not filter_value['gender']:
+        filter_value['gender'] = init_gender
+    if (filter_value['championship'] is None) or (filter_value['championship'] == []):
+        filter_value['championship'] = init_championship
+        filter_value['class_boat'] = init_boat_classes
+    if (filter_value['class_boat'] is None) or (filter_value['class_boat'] == []):
+        filter_value['class_boat'] = init_boat_classes
+        filter_value['championship'] = init_championship
+    selected = df[filter_value.keys()].isin(filter_value).sum(axis=1)
+    selected = df.loc[selected[selected == selected.max()].index]
+    return selected
+
+
 filename = 'description.csv'
 df = pd.read_csv(filename, index_col=0)
 
@@ -77,17 +92,18 @@ def update_graph(value_range_slider_year,
                  value_dropdown_boat_classes):
 
     output = []
-    output.append(html.Label('You have selected year {} - {}\n'.format(
-        filter_value['year'][value_range_slider_year[0]],
-        filter_value['year'][value_range_slider_year[1]])))
+    output.append(html.Label('You have selected year {} - {}\n'.format(filter_value['year'][value_range_slider_year[0]],
+                                                                       filter_value['year'][value_range_slider_year[1]])))
+    output.append(html.Label('You have available year {}\n'.format(filter_value['year'])))
+    output.append(html.Label('------'))
     output.append(html.Label('You have selected gender {}\n'.format(value_checklist_gender)))
-    output.append(html.Label('You have filter gender {}\n'.format(filter_value['gender'])))
+    output.append(html.Label('You have available gender {}\n'.format(filter_value['gender'])))
     output.append(html.Label('------'))
     output.append(html.Label('You have selected championship {}\n'.format(value_dropdown_championship)))
-    output.append(html.Label('You have filter championship {}\n'.format(filter_value['championship'])))
+    output.append(html.Label('You have available championship {}\n'.format(filter_value['championship'])))
     output.append(html.Label('------'))
     output.append(html.Label('You have selected boat classes {}\n'.format(value_dropdown_boat_classes)))
-    output.append(html.Label('You have filter boat classes {}\n'.format(filter_value['class_boat'])))
+    output.append(html.Label('You have available boat classes {}\n'.format(filter_value['class_boat'])))
     return [output]
 
 
@@ -102,23 +118,17 @@ def update_graph(value_range_slider_year,
 def update_range_slider(value_checklist_gender,
                         value_dropdown_championship,
                         value_dropdown_boat_classes):
-    if not value_checklist_gender:
-        value_checklist_gender = init_gender
-    if (value_dropdown_championship is None) or not value_dropdown_championship:
-        value_dropdown_championship = init_championship
-    if (value_dropdown_boat_classes is None) or not value_dropdown_boat_classes:
-        value_dropdown_boat_classes = init_boat_classes
 
     filter_value.update({"year": init_years,
                          "gender": value_checklist_gender,
                          'championship': value_dropdown_championship,
                          'class_boat': value_dropdown_boat_classes})
 
-    selected = df[filter_value.keys()].isin(filter_value).sum(axis=1)
-    selected = df.loc[selected[selected == selected.max()].index]
+    selected = filter_df(df, filter_value)
 
-    years = list(selected['year'].unique())
+    years = selected['year'].unique()
     filter_value.update({"year": years})
+    print(filter_value)
 
     marks = {i: str(year) for i, year in enumerate(years)}
     min_ = 0
@@ -133,23 +143,15 @@ def update_range_slider(value_checklist_gender,
     [dash.dependencies.Input('checklist_gender', 'value'),
      dash.dependencies.Input('dropdown_boat_classes', 'value')])
 def update_dropdown_championship(value_checklist_gender,
-                                 value_dropdown_boat_classes,
-                                 value_dropdown_championship=None):
-    if not value_checklist_gender:
-        value_checklist_gender = init_gender
-    if (value_dropdown_championship is None) or not value_dropdown_championship:
-        value_dropdown_championship = init_championship
-    if (value_dropdown_boat_classes is None) or not value_dropdown_boat_classes:
-        value_dropdown_boat_classes = init_boat_classes
+                                 value_dropdown_boat_classes):
+
     filter_value.update({"gender": value_checklist_gender,
-                         'class_boat': value_dropdown_boat_classes,
-                         'championship': value_dropdown_championship})
+                         'class_boat': value_dropdown_boat_classes})
+    selected = filter_df(df, filter_value)
 
-    selected = df[filter_value.keys()].isin(filter_value).sum(axis=1)
-    selected = df.loc[selected[selected == selected.max()].index]
-
-    championships = list(selected['championship'].unique())
+    championships = selected['championship'].unique()
     filter_value.update({"championship": championships})
+    print(filter_value)
 
     options = [{'label': champ, 'value': champ} for champ in sorted(championships)]
     return options
@@ -159,24 +161,15 @@ def update_dropdown_championship(value_checklist_gender,
     [dash.dependencies.Input('checklist_gender', 'value'),
      dash.dependencies.Input('dropdown_championship', 'value')])
 def update_dropdown_boat_classes(value_checklist_gender,
-                                 value_dropdown_championship,
-                                 value_dropdown_boat_classes=None):
-    if not value_checklist_gender:
-        value_checklist_gender = init_gender
-    if (value_dropdown_championship is None) or not value_dropdown_championship:
-        value_dropdown_championship = init_championship
-    if (value_dropdown_boat_classes is None) or not value_dropdown_boat_classes:
-        value_dropdown_boat_classes = init_boat_classes
+                                 value_dropdown_championship):
+
     filter_value.update({"gender": value_checklist_gender,
-                         'championship': value_dropdown_championship,
-                         'class_boat': value_dropdown_boat_classes})
+                         'championship': value_dropdown_championship})
+    selected = filter_df(df, filter_value)
 
-    selected = df[filter_value.keys()].isin(filter_value).sum(axis=1)
-    selected = df.loc[selected[selected == selected.max()].index]
-
-    boat_classes = list(selected['class_boat'].unique())
+    boat_classes = selected['class_boat'].unique()
     filter_value.update({"class_boat": boat_classes})
-
+    print(filter_value)
     options = [{'label': boat, 'value': boat} for boat in sorted(boat_classes)]
     return options
 
