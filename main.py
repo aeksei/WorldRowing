@@ -169,15 +169,17 @@ def update_split_time(value_range_slider_year,
     df = df_data.loc[df_description_index, :]
 
     fig = make_subplots(
-        rows=1, cols=2, subplot_titles=('Последовательность мест по общему времени среди всех спортсменов заезда',
-                                        'Ранжирование личного среднего времени на протяжении заезда'))
+        rows=1, cols=3, subplot_titles=('Общие места',
+                                        'Ранжирование личного среднего времени',
+                                        'Наиболее выигрышные комбинации'))
 
     color = ['indianred', 'lightsalmon']
+    columns = ["total_rank_common", "split_rank_self"]
     place = 1
-    for i, col in enumerate([['total_rank_common'], ['split_rank_self']], start=1):
-        plot_total_rank_common = df.loc[df['_2000m_total_rank'] == place, col + ["_2000m_total_rank"]].groupby(
+    for i, col in enumerate(columns, start=1):
+        plot_total_rank_common = df.loc[df['_2000m_total_rank'] == place, [col] + ["_2000m_total_rank"]].groupby(
             by=col).count()
-        plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:15]
+        plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:10]
         fig.add_trace(
             go.Bar(
                 x=plot_total_rank_common.index,
@@ -186,6 +188,19 @@ def update_split_time(value_range_slider_year,
                 marker_color=color[place - 1]),
             row=1, col=i
         )
+    plot_total_rank_common = df.loc[df['_2000m_total_rank'] == place, columns + ["_2000m_total_rank"]].groupby(
+        by=columns).count()
+    plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:5]
+
+    common_index = [str(i) for i in plot_total_rank_common.index]
+    fig.add_trace(
+        go.Bar(
+            x=common_index,
+            y=plot_total_rank_common['_2000m_total_rank'],
+            name=place,
+            marker_color=color[place - 1]),
+        row=1, col=3
+    )
 
     fig.update_layout(showlegend=False)
     return {
