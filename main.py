@@ -10,7 +10,7 @@ def filter_df(df, update=None):
     local_filter = filter_value.copy()
     if update is not None:
         local_filter.update(update)
-    if not local_filter['gender']:
+    if local_filter['gender'] == []:
         local_filter['gender'] = init_gender
     if (local_filter['championship'] is None) or (local_filter['championship'] == []):
         local_filter['championship'] = init_championship
@@ -37,7 +37,6 @@ filter_value = {'year': init_years,
                 'class_boat': init_boat_classes}
 
 init_year_marks = {i: str(year) for i, year in enumerate(init_years)}
-
 
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
@@ -69,7 +68,16 @@ app.layout = html.Div([
     ),
 
     html.Div([
-        html.Label('Date competition'),
+        dcc.Graph(
+            id="bar_plot_total_time"
+        ),
+        dcc.Graph(
+            id="bar_plot_split_time"
+        ),
+    ], style={'columnCount': 2}),
+
+    html.Div([
+        # html.Label('Date competition'),
         dcc.RangeSlider(
             id='range_slider_year',
             min=0,
@@ -79,12 +87,6 @@ app.layout = html.Div([
         )], style={'width': '80%',
                    'margin-left': 'auto',
                    'margin-right': 'auto'}),
-
-    html.Div([
-        html.Label('Date competition'),
-        dcc.Graph(
-            id="bar_plot"
-        )]),
 
     html.Div(id='output-container-range-slider', style={'margin-top': 20})
 ], style={'columnCount': 1})
@@ -101,7 +103,6 @@ app.layout = html.Div([
 def update_range_slider(value_checklist_gender,
                         value_dropdown_championship,
                         value_dropdown_boat_classes):
-
     filter_value.update({"gender": value_checklist_gender,
                          'championship': value_dropdown_championship,
                          'class_boat': value_dropdown_boat_classes})
@@ -124,7 +125,6 @@ def update_range_slider(value_checklist_gender,
      dash.dependencies.Input('dropdown_boat_classes', 'value')])
 def update_dropdown_championship(value_checklist_gender,
                                  value_dropdown_boat_classes):
-
     filter_value.update({"gender": value_checklist_gender,
                          'class_boat': value_dropdown_boat_classes})
 
@@ -136,13 +136,13 @@ def update_dropdown_championship(value_checklist_gender,
     options = [{'label': champ, 'value': champ} for champ in sorted(championships)]
     return options
 
+
 @app.callback(
     dash.dependencies.Output('dropdown_boat_classes', 'options'),
     [dash.dependencies.Input('checklist_gender', 'value'),
      dash.dependencies.Input('dropdown_championship', 'value')])
 def update_dropdown_boat_classes(value_checklist_gender,
                                  value_dropdown_championship):
-
     filter_value.update({"gender": value_checklist_gender,
                          'championship': value_dropdown_championship})
     selected = filter_df(df_description, {'class_boat': init_boat_classes})
@@ -152,8 +152,9 @@ def update_dropdown_boat_classes(value_checklist_gender,
     options = [{'label': boat, 'value': boat} for boat in sorted(boat_classes)]
     return options
 
+
 @app.callback(
-    dash.dependencies.Output('bar_plot', 'figure'),
+    dash.dependencies.Output('bar_plot_total_time', 'figure'),
     [dash.dependencies.Input('range_slider_year', 'value'),
      dash.dependencies.Input('checklist_gender', 'value'),
      dash.dependencies.Input('dropdown_championship', 'value'),
@@ -162,24 +163,67 @@ def update_graph(value_range_slider_year,
                  value_checklist_gender,
                  value_dropdown_championship,
                  value_dropdown_boat_classes):
+    # TODO uuid index in data and desc
 
-    df_description_index = filter_df(df_description).index
+    years = filter_value['year'][value_range_slider_year[0]:value_range_slider_year[1]]
+
+    df_description_index = filter_df(df_description, {'year': years}).index
     df = df_data.loc[df_description_index, :]
     col = ['total_rank_common']
     plot_total_rank_common = df.loc[df['_2000m_total_rank'] == 1, col + ["_2000m_total_rank"]].groupby(by=col).count()
-    plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:10]
+    plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:20]
 
-    traces = []
     bar = go.Bar(
         x=plot_total_rank_common.index,
         y=plot_total_rank_common['_2000m_total_rank']
     )
-    traces.append(bar)
+
     return {
-        'data': traces,
+        'data': [bar],
         'layout': go.Layout(
-            xaxis={'title': 'GDP Per Capita'},
-            yaxis={'title': 'Life Expectancy'}
+            xaxis={'title': 'GDP Per Capita1'},
+            yaxis={'title': 'Life Expectancy1'}
+        )
+    }
+
+
+@app.callback(
+    dash.dependencies.Output('bar_plot_split_time', 'figure'),
+    [dash.dependencies.Input('range_slider_year', 'value'),
+     dash.dependencies.Input('checklist_gender', 'value'),
+     dash.dependencies.Input('dropdown_championship', 'value'),
+     dash.dependencies.Input('dropdown_boat_classes', 'value')])
+def update_split_time(value_range_slider_year,
+                      value_checklist_gender,
+                      value_dropdown_championship,
+                      value_dropdown_boat_classes):
+    # TODO uuid index in data and desc
+
+    years = filter_value['year'][value_range_slider_year[0]:value_range_slider_year[1]]
+
+    df_description_index = filter_df(df_description, {'year': years}).index
+    col = ['split_rank_self']
+    df = df_data.loc[df_description_index, :]
+
+    fig = go.Figure()
+    color = ['indianred', 'lightsalmon']
+    for place in [1, 2]:
+        plot_total_rank_common = df.loc[df['_2000m_total_rank'] == place, col + ["_2000m_total_rank"]].groupby(
+            by=col).count()
+        plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:20]
+        fig.add_trace(
+            go.Bar(
+                x=plot_total_rank_common.index,
+                y=plot_total_rank_common['_2000m_total_rank'],
+                name=place,
+                marker_color=color[place - 1])
+        )
+
+    return {
+        'data': fig['data'],
+        'layout': go.Layout(
+            xaxis={'title': 'GDP Per Capita2'},
+            yaxis={'title': 'Life Expectancy2'}
         )
     }
 
@@ -196,6 +240,7 @@ def update_graph(value_range_slider_year,
     # output.append(html.Label('------'))
     # output.append(html.Label('You have selected boat classes {}\n'.format(value_dropdown_boat_classes)))
     # output.append(html.Label('You have available boat classes {}\n'.format(filter_value['class_boat'])))
+
 
 if __name__ == '__main__':
     app.run_server(debug=True)
