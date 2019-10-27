@@ -169,8 +169,8 @@ def update_split_time(value_range_slider_year,
     df = df_data.loc[df_description_index, :]
 
     fig = make_subplots(
-        rows=1, cols=2, subplot_titles=('Последовательность мест по общему времени среди всех спортсменов',
-                                        'Последовательность мест по среднему времени среди своего времени'))
+        rows=1, cols=2, subplot_titles=('Последовательность мест по общему времени среди всех спортсменов заезда',
+                                        'Ранжирование личного среднего времени на протяжении заезда'))
 
     color = ['indianred', 'lightsalmon']
     place = 1
@@ -187,6 +187,7 @@ def update_split_time(value_range_slider_year,
             row=1, col=i
         )
 
+    fig.update_layout(showlegend=False)
     return {
         'data': fig['data'],
         'layout': fig['layout']
