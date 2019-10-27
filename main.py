@@ -5,16 +5,17 @@ import dash_html_components as html
 import pandas as pd
 
 
-def filter_df(df, filter_value):
-    if not filter_value['gender']:
-        filter_value['gender'] = init_gender
-    if (filter_value['championship'] is None) or (filter_value['championship'] == []):
-        filter_value['championship'] = init_championship
-        filter_value['class_boat'] = init_boat_classes
-    if (filter_value['class_boat'] is None) or (filter_value['class_boat'] == []):
-        filter_value['class_boat'] = init_boat_classes
-        filter_value['championship'] = init_championship
-    selected = df[filter_value.keys()].isin(filter_value).sum(axis=1)
+def filter_df(df, update):
+    local_filter = filter_value.copy()
+    local_filter.update(update)
+    if not local_filter['gender']:
+        local_filter['gender'] = init_gender
+    if (local_filter['championship'] is None) or (local_filter['championship'] == []):
+        local_filter['championship'] = init_championship
+    if (local_filter['class_boat'] is None) or (local_filter['class_boat'] == []):
+        local_filter['class_boat'] = init_boat_classes
+
+    selected = df[local_filter.keys()].isin(local_filter).sum(axis=1)
     selected = df.loc[selected[selected == selected.max()].index]
     return selected
 
@@ -34,10 +35,10 @@ filter_value = {'year': init_years,
 
 init_year_marks = {i: str(year) for i, year in enumerate(init_years)}
 
+
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
-
 app.layout = html.Div([
     html.Label('Championship'),
     dcc.Dropdown(
@@ -81,6 +82,68 @@ app.layout = html.Div([
 
 
 @app.callback(
+    [dash.dependencies.Output('range_slider_year', 'min'),
+     dash.dependencies.Output('range_slider_year', 'max'),
+     dash.dependencies.Output('range_slider_year', 'marks'),
+     dash.dependencies.Output('range_slider_year', 'value')],
+    [dash.dependencies.Input('checklist_gender', 'value'),
+     dash.dependencies.Input('dropdown_championship', 'value'),
+     dash.dependencies.Input('dropdown_boat_classes', 'value')])
+def update_range_slider(value_checklist_gender,
+                        value_dropdown_championship,
+                        value_dropdown_boat_classes):
+
+    filter_value.update({"gender": value_checklist_gender,
+                         'championship': value_dropdown_championship,
+                         'class_boat': value_dropdown_boat_classes})
+
+    selected = filter_df(df, {"year": init_years})
+    years = selected['year'].unique()
+    filter_value.update({"year": years})
+
+    marks = {i: str(year) for i, year in enumerate(years)}
+    min_ = 0
+    max_ = len(marks) - 1
+    value = [min_, max_]
+
+    return [min_, max_, marks, value]
+
+
+@app.callback(
+    dash.dependencies.Output('dropdown_championship', 'options'),
+    [dash.dependencies.Input('checklist_gender', 'value'),
+     dash.dependencies.Input('dropdown_boat_classes', 'value')])
+def update_dropdown_championship(value_checklist_gender,
+                                 value_dropdown_boat_classes):
+
+    filter_value.update({"gender": value_checklist_gender,
+                         'class_boat': value_dropdown_boat_classes})
+
+    selected = filter_df(df, {"championship": init_championship})
+
+    championships = selected['championship'].unique()
+    filter_value.update({"championship": championships})
+
+    options = [{'label': champ, 'value': champ} for champ in sorted(championships)]
+    return options
+
+@app.callback(
+    dash.dependencies.Output('dropdown_boat_classes', 'options'),
+    [dash.dependencies.Input('checklist_gender', 'value'),
+     dash.dependencies.Input('dropdown_championship', 'value')])
+def update_dropdown_boat_classes(value_checklist_gender,
+                                 value_dropdown_championship):
+
+    filter_value.update({"gender": value_checklist_gender,
+                         'championship': value_dropdown_championship})
+    selected = filter_df(df, {'class_boat': init_boat_classes})
+
+    boat_classes = selected['class_boat'].unique()
+    filter_value.update({"class_boat": boat_classes})
+    options = [{'label': boat, 'value': boat} for boat in sorted(boat_classes)]
+    return options
+
+@app.callback(
     [dash.dependencies.Output('output-container-range-slider', 'children')],
     [dash.dependencies.Input('range_slider_year', 'value'),
      dash.dependencies.Input('checklist_gender', 'value'),
@@ -105,73 +168,6 @@ def update_graph(value_range_slider_year,
     output.append(html.Label('You have selected boat classes {}\n'.format(value_dropdown_boat_classes)))
     output.append(html.Label('You have available boat classes {}\n'.format(filter_value['class_boat'])))
     return [output]
-
-
-@app.callback(
-    [dash.dependencies.Output('range_slider_year', 'min'),
-     dash.dependencies.Output('range_slider_year', 'max'),
-     dash.dependencies.Output('range_slider_year', 'marks'),
-     dash.dependencies.Output('range_slider_year', 'value')],
-    [dash.dependencies.Input('checklist_gender', 'value'),
-     dash.dependencies.Input('dropdown_championship', 'value'),
-     dash.dependencies.Input('dropdown_boat_classes', 'value')])
-def update_range_slider(value_checklist_gender,
-                        value_dropdown_championship,
-                        value_dropdown_boat_classes):
-
-    filter_value.update({"year": init_years,
-                         "gender": value_checklist_gender,
-                         'championship': value_dropdown_championship,
-                         'class_boat': value_dropdown_boat_classes})
-
-    selected = filter_df(df, filter_value)
-
-    years = selected['year'].unique()
-    filter_value.update({"year": years})
-    print(filter_value)
-
-    marks = {i: str(year) for i, year in enumerate(years)}
-    min_ = 0
-    max_ = len(marks) - 1
-    value = [min_, max_]
-
-    return [min_, max_, marks, value]
-
-
-@app.callback(
-    dash.dependencies.Output('dropdown_championship', 'options'),
-    [dash.dependencies.Input('checklist_gender', 'value'),
-     dash.dependencies.Input('dropdown_boat_classes', 'value')])
-def update_dropdown_championship(value_checklist_gender,
-                                 value_dropdown_boat_classes):
-
-    filter_value.update({"gender": value_checklist_gender,
-                         'class_boat': value_dropdown_boat_classes})
-    selected = filter_df(df, filter_value)
-
-    championships = selected['championship'].unique()
-    filter_value.update({"championship": championships})
-    print(filter_value)
-
-    options = [{'label': champ, 'value': champ} for champ in sorted(championships)]
-    return options
-
-@app.callback(
-    dash.dependencies.Output('dropdown_boat_classes', 'options'),
-    [dash.dependencies.Input('checklist_gender', 'value'),
-     dash.dependencies.Input('dropdown_championship', 'value')])
-def update_dropdown_boat_classes(value_checklist_gender,
-                                 value_dropdown_championship):
-
-    filter_value.update({"gender": value_checklist_gender,
-                         'championship': value_dropdown_championship})
-    selected = filter_df(df, filter_value)
-
-    boat_classes = selected['class_boat'].unique()
-    filter_value.update({"class_boat": boat_classes})
-    print(filter_value)
-    options = [{'label': boat, 'value': boat} for boat in sorted(boat_classes)]
-    return options
 
 
 if __name__ == '__main__':
