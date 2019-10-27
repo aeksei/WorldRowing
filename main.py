@@ -2,12 +2,14 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+import plotly.graph_objects as go
 import pandas as pd
 
 
-def filter_df(df, update):
+def filter_df(df, update=None):
     local_filter = filter_value.copy()
-    local_filter.update(update)
+    if update is not None:
+        local_filter.update(update)
     if not local_filter['gender']:
         local_filter['gender'] = init_gender
     if (local_filter['championship'] is None) or (local_filter['championship'] == []):
@@ -21,12 +23,13 @@ def filter_df(df, update):
 
 
 filename = 'description.csv'
-df = pd.read_csv(filename, index_col=0)
+df_description = pd.read_csv(filename, index_col=0)
+df_data = pd.read_csv("data.csv", index_col=0)
 
-init_years = df['year'].unique()
-init_gender = df['gender'].unique()
-init_championship = df['championship'].unique()
-init_boat_classes = df['class_boat'].unique()
+init_years = df_description['year'].unique()
+init_gender = df_description['gender'].unique()
+init_championship = df_description['championship'].unique()
+init_boat_classes = df_description['class_boat'].unique()
 
 filter_value = {'year': init_years,
                 'gender': init_gender,
@@ -77,6 +80,12 @@ app.layout = html.Div([
                    'margin-left': 'auto',
                    'margin-right': 'auto'}),
 
+    html.Div([
+        html.Label('Date competition'),
+        dcc.Graph(
+            id="bar_plot"
+        )]),
+
     html.Div(id='output-container-range-slider', style={'margin-top': 20})
 ], style={'columnCount': 1})
 
@@ -97,7 +106,7 @@ def update_range_slider(value_checklist_gender,
                          'championship': value_dropdown_championship,
                          'class_boat': value_dropdown_boat_classes})
 
-    selected = filter_df(df, {"year": init_years})
+    selected = filter_df(df_description, {"year": init_years})
     years = selected['year'].unique()
     filter_value.update({"year": years})
 
@@ -119,7 +128,7 @@ def update_dropdown_championship(value_checklist_gender,
     filter_value.update({"gender": value_checklist_gender,
                          'class_boat': value_dropdown_boat_classes})
 
-    selected = filter_df(df, {"championship": init_championship})
+    selected = filter_df(df_description, {"championship": init_championship})
 
     championships = selected['championship'].unique()
     filter_value.update({"championship": championships})
@@ -136,7 +145,7 @@ def update_dropdown_boat_classes(value_checklist_gender,
 
     filter_value.update({"gender": value_checklist_gender,
                          'championship': value_dropdown_championship})
-    selected = filter_df(df, {'class_boat': init_boat_classes})
+    selected = filter_df(df_description, {'class_boat': init_boat_classes})
 
     boat_classes = selected['class_boat'].unique()
     filter_value.update({"class_boat": boat_classes})
@@ -144,7 +153,7 @@ def update_dropdown_boat_classes(value_checklist_gender,
     return options
 
 @app.callback(
-    [dash.dependencies.Output('output-container-range-slider', 'children')],
+    dash.dependencies.Output('bar_plot', 'figure'),
     [dash.dependencies.Input('range_slider_year', 'value'),
      dash.dependencies.Input('checklist_gender', 'value'),
      dash.dependencies.Input('dropdown_championship', 'value'),
@@ -154,21 +163,39 @@ def update_graph(value_range_slider_year,
                  value_dropdown_championship,
                  value_dropdown_boat_classes):
 
-    output = []
-    output.append(html.Label('You have selected year {} - {}\n'.format(filter_value['year'][value_range_slider_year[0]],
-                                                                       filter_value['year'][value_range_slider_year[1]])))
-    output.append(html.Label('You have available year {}\n'.format(filter_value['year'])))
-    output.append(html.Label('------'))
-    output.append(html.Label('You have selected gender {}\n'.format(value_checklist_gender)))
-    output.append(html.Label('You have available gender {}\n'.format(filter_value['gender'])))
-    output.append(html.Label('------'))
-    output.append(html.Label('You have selected championship {}\n'.format(value_dropdown_championship)))
-    output.append(html.Label('You have available championship {}\n'.format(filter_value['championship'])))
-    output.append(html.Label('------'))
-    output.append(html.Label('You have selected boat classes {}\n'.format(value_dropdown_boat_classes)))
-    output.append(html.Label('You have available boat classes {}\n'.format(filter_value['class_boat'])))
-    return [output]
+    df_description_index = filter_df(df_description).index
+    df = df_data.loc[df_description_index, :]
+    col = ['total_rank_common']
+    plot_total_rank_common = df.loc[df['_2000m_total_rank'] == 1, col + ["_2000m_total_rank"]].groupby(by=col).count()
+    plot_total_rank_common = plot_total_rank_common.sort_values(by=["_2000m_total_rank"], ascending=False).iloc[:10]
 
+    traces = []
+    bar = go.Bar(
+        x=plot_total_rank_common.index,
+        y=plot_total_rank_common['_2000m_total_rank']
+    )
+    traces.append(bar)
+    return {
+        'data': traces,
+        'layout': go.Layout(
+            xaxis={'title': 'GDP Per Capita'},
+            yaxis={'title': 'Life Expectancy'}
+        )
+    }
+
+    # output = []
+    # output.append(html.Label('You have selected year {} - {}\n'.format(filter_value['year'][value_range_slider_year[0]],
+    #                                                                    filter_value['year'][value_range_slider_year[1]])))
+    # output.append(html.Label('You have available year {}\n'.format(filter_value['year'])))
+    # output.append(html.Label('------'))
+    # output.append(html.Label('You have selected gender {}\n'.format(value_checklist_gender)))
+    # output.append(html.Label('You have available gender {}\n'.format(filter_value['gender'])))
+    # output.append(html.Label('------'))
+    # output.append(html.Label('You have selected championship {}\n'.format(value_dropdown_championship)))
+    # output.append(html.Label('You have available championship {}\n'.format(filter_value['championship'])))
+    # output.append(html.Label('------'))
+    # output.append(html.Label('You have selected boat classes {}\n'.format(value_dropdown_boat_classes)))
+    # output.append(html.Label('You have available boat classes {}\n'.format(filter_value['class_boat'])))
 
 if __name__ == '__main__':
     app.run_server(debug=True)
